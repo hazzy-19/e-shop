@@ -1,0 +1,83 @@
+@import "tailwindcss";
+
+@plugin "tailwindcss-animate";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --font-sans: 'Inter', system-ui, sans-serif;
+
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+}
+
+@layer base {
+  :root {
+    --background: 160 20% 98%;
+    --foreground: 173 30% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 173 30% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 173 30% 10%;
+
+    /* ── Teal primary ── */
+    --primary: 172 80% 36%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 173 15% 90%;
+    --secondary-foreground: 172 50% 25%;
+
+    --muted: 170 20% 93%;
+    --muted-foreground: 170 15% 45%;
+
+    --accent: 172 40% 88%;
+    --accent-foreground: 172 70% 25%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 172 20% 88%;
+    --input: 172 20% 88%;
+    --ring: 172 80% 36%;
+
+    --radius: 0.625rem;
+  }
+}
+
+@layer base {
+  * { @apply border-border outline-ring/50; }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+}
