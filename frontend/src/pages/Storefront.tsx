@@ -12,18 +12,36 @@ type Product = {
   price: number;
   stock: number;
   image_url?: string;
+  category_id?: number | null;
+};
+
+type Category = {
+  id: number;
+  name: string;
+  slug: string;
 };
 
 export default function Storefront() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedCat, setSelectedCat] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${API_URL}/products/`)
+    fetch(`${API_URL}/categories/`)
+      .then(res => res.json())
+      .then(setCategories)
+      .catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    setLoading(true);
+    const catQuery = selectedCat ? `?category_id=${selectedCat}` : '';
+    fetch(`${API_URL}/products/${catQuery}`)
       .then(res => res.json())
       .then(data => { setProducts(data); setLoading(false); })
       .catch(() => setLoading(false));
-  }, []);
+  }, [selectedCat]);
 
   return (
     <div className="space-y-14">
@@ -45,11 +63,40 @@ export default function Storefront() {
         </div>
       </section>
 
+      {/* Categories Filter */}
+      {categories.length > 0 && (
+                 <section className="flex flex-wrap gap-2 pt-2">
+          <button
+            onClick={() => setSelectedCat(null)}
+            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors border ${
+              selectedCat === null
+                ? 'bg-primary text-primary-foreground border-primary'
+                : 'bg-transparent text-foreground border-border hover:bg-muted'
+            }`}
+          >
+            All Products
+          </button>
+          {categories.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => setSelectedCat(cat.id)}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors border ${
+                selectedCat === cat.id
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-transparent text-foreground border-border hover:bg-muted'
+              }`}
+            >
+              {cat.name}
+            </button>
+          ))}
+        </section>
+      )}
+
       {/* Products */}
       <section className="space-y-6">
         <div className="flex items-center gap-3">
           <Tag className="w-5 h-5 text-primary" />
-          <h2 className="text-2xl font-bold tracking-tight">All Products</h2>
+          <h2 className="text-2xl font-bold tracking-tight">{selectedCat ? categories.find(c => c.id === selectedCat)?.name : 'All Products'}</h2>
           {!loading && (
             <span className="text-sm text-muted-foreground ml-auto">{products.length} items</span>
           )}

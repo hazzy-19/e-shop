@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean
+from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey
 from sqlalchemy.orm import relationship
 from app.database import Base
 
@@ -12,5 +12,7 @@ class Product(Base):
     stock = Column(Integer, default=0)
     image_url = Column(String)
     is_active = Column(Boolean, default=True) # Added soft delete
+    category_id = Column(Integer, ForeignKey("categories.id"), nullable=True)
     
     order_items = relationship("OrderItem", back_populates="product")
+    category = relationship("Category", back_populates="products")

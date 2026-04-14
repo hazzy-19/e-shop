@@ -13,6 +13,9 @@ bot_app.add_handler(CommandHandler("myid", handlers.myid))
 bot_app.add_handler(CommandHandler("stats", handlers.stats))
 bot_app.add_handler(CommandHandler("mask_product", handlers.mask_product_cmd))
 
+# Listen for uploaded documents (.zip)
+bot_app.add_handler(MessageHandler(filters.Document.ZIP, handlers.handle_document))
+
 # Add product conversation — accepts text OR photo at the IMAGE step
 conv_handler = ConversationHandler(
     entry_points=[CommandHandler("add_product", handlers.start_add_product)],

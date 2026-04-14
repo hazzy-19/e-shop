@@ -203,3 +203,86 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text("❌ Cancelled.", reply_markup=ReplyKeyboardRemove())
     context.user_data.clear()
     return ConversationHandler.END
+
+# ─── ZIP Upload Handler ──────────────────────────────────
+import zipfile
+import csv
+import io
+import shutil
+
+async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not await check_admin(update): return
+    
+    doc = update.message.document
+    if not doc or not doc.file_name.endswith('.zip'):
+        return
+
+    await update.message.reply_text("📥 Received ZIP file. Processing bulk upload...")
+    
+    file = await context.bot.get_file(doc.file_id)
+    temp_zip_path = os.path.join(IMAGES_DIR, f"temp_{uuid.uuid4().hex}.zip")
+    await file.download_to_drive(temp_zip_path)
+    
+    extracted_count = 0
+    errors = []
+    
+    try:
+        from app.categories.models import Category
+        with zipfile.ZipFile(temp_zip_path, 'r') as zip_ref:
+            csv_files = [f for f in zip_ref.namelist() if f.endswith(".csv")]
+            if not csv_files:
+                await update.message.reply_text("❌ No CSV file found in the ZIP.")
+                return
+                
+            csv_filename = csv_files[0]
+            with zip_ref.open(csv_filename) as f:
+                content = f.read().decode('utf-8')
+                
+            reader = csv.DictReader(io.StringIO(content))
+            async with async_session() as db:
+                for row in reader:
+                    try:
+                        category_name = row.get("category", "").strip()
+                        cat_id = None
+                        if category_name:
+                            cat_res = await db.execute(select(Category).where(Category.name == category_name))
+                            cat = cat_res.scalars().first()
+                            if not cat:
+                                slug = category_name.lower().replace(" ", "-")
+                                cat = Category(name=category_name, slug=slug)
+                                db.add(cat)
+                                await db.commit()
+                                await db.refresh(cat)
+                            cat_id = cat.id
+
+                        image_filename = row.get("image_filename", "").strip()
+                        image_url = None
+                        if image_filename and image_filename in zip_ref.namelist():
+                            new_filename = f"{uuid.uuid4().hex}_{image_filename.replace(' ', '_')}"
+                            target_path = os.path.join(IMAGES_DIR, new_filename)
+                            with zip_ref.open(image_filename) as zf, open(target_path, 'wb') as f_out:
+                                shutil.copyfileobj(zf, f_out)
+                            image_url = f"/static/images/{new_filename}"
+
+                        product = product_models.Product(
+                            name=row.get("name", "").strip(),
+                            description=row.get("description", "").strip(),
+                            price=float(row.get("price", 0)),
+                            stock=int(row.get("stock", 0)),
+                            category_id=cat_id,
+                            image_url=image_url
+                        )
+                        db.add(product)
+                        extracted_count += 1
+                        await db.commit()
+                    except Exception as e:
+                        errors.append(f"Row {row.get('name', 'Unknown')}: {e}")
+            
+        msg = f"✅ Extracted & created {extracted_count} products!"
+        if errors:
+            msg += f"\n⚠️ Encountered {len(errors)} errors (check logs)."
+        await update.message.reply_text(msg)
+            
+    finally:
+        if os.path.exists(temp_zip_path):
+            os.remove(temp_zip_path)

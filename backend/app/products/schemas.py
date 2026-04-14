@@ -7,6 +7,7 @@ class ProductBase(BaseModel):
     price: float
     stock: int = 0
     image_url: Optional[str] = None
+    category_id: Optional[int] = None
 
 class ProductCreate(ProductBase):
     pass
@@ -17,6 +18,7 @@ class ProductUpdate(BaseModel):
     price: Optional[float] = None
     stock: Optional[int] = None
     image_url: Optional[str] = None
+    category_id: Optional[int] = None
 
 class ProductResponse(ProductBase):
     id: int

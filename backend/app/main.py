@@ -14,16 +14,18 @@ from app.orders import models as order_models
 
 # Routers
 from app.auth.router import router as auth_router
+from app.categories.router import router as categories_router
 from app.products.router import router as products_router
 from app.orders.router import router as orders_router
 
 from app.bot.main import start_bot, stop_bot
+from app.core.firebase import initialize_firebase
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    initialize_firebase()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    
     await start_bot()
     yield
     await stop_bot()
@@ -39,6 +41,7 @@ app.add_middleware(
 )
 
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
+app.include_router(categories_router, prefix="/api/categories", tags=["categories"])
 app.include_router(products_router, prefix="/api/products", tags=["products"])
 app.include_router(orders_router, prefix="/api/orders", tags=["orders"])
 

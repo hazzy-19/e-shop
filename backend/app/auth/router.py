@@ -1,52 +1,81 @@
-from datetime import timedelta
-from typing import Annotated
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+import firebase_admin
+from firebase_admin import auth as firebase_auth
 
-from app.auth import models, schemas
-from app.core import security
-from app.core.config import settings
+from app.auth.models import User
 from app.database import get_db
 
 router = APIRouter()
+bearer_scheme = HTTPBearer(auto_error=False)
 
-@router.post("/register", response_model=schemas.UserResponse)
-async def register_user(user: schemas.UserCreate, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(models.User).where(models.User.email == user.email))
-    if result.scalars().first():
-        raise HTTPException(status_code=400, detail="Email already registered")
-    
-    count_result = await db.execute(select(models.User))
-    is_admin = len(count_result.scalars().all()) == 0
-
-    hashed_password = security.get_password_hash(user.password)
-    db_user = models.User(
-        email=user.email, 
-        hashed_password=hashed_password,
-        is_admin=is_admin
-    )
-    db.add(db_user)
-    await db.commit()
-    await db.refresh(db_user)
-    return db_user
-
-@router.post("/login", response_model=schemas.Token)
-async def login_for_access_token(
-    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
-    db: AsyncSession = Depends(get_db)
+@router.post("/sync")
+async def sync_user(
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+    db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(models.User).where(models.User.email == form_data.username))
+    """
+    Called by the frontend immediately after Firebase login.
+    Verifies the Firebase token, then creates or fetches the user
+    in our PostgreSQL database. Returns is_admin status.
+    """
+    if not credentials:
+        raise HTTPException(status_code=401, detail="No token provided")
+
+    try:
+        decoded = firebase_auth.verify_id_token(credentials.credentials)
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid Firebase token")
+
+    uid = decoded["uid"]
+    email = decoded.get("email", "")
+
+    # Find existing user by firebase_uid
+    result = await db.execute(select(User).where(User.firebase_uid == uid))
     user = result.scalars().first()
-    if not user or not security.verify_password(form_data.password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = security.create_access_token(
-        data={"email": user.email}, expires_delta=access_token_expires
-    )
-    return {"access_token": access_token, "token_type": "bearer"}
+
+    if not user:
+        # New user — also check by email in case they had an old account
+        result = await db.execute(select(User).where(User.email == email))
+        user = result.scalars().first()
+
+        if user:
+            # Link the old account to Firebase
+            user.firebase_uid = uid
+        else:
+            # Brand new user
+            user = User(email=email, firebase_uid=uid, is_active=True, is_admin=False)
+            db.add(user)
+
+    await db.commit()
+    await db.refresh(user)
+
+    return {
+        "id": user.id,
+        "email": user.email,
+        "is_admin": user.is_admin,
+        "is_active": user.is_active,
+    }
+
+
+@router.get("/me")
+async def me(
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+    db: AsyncSession = Depends(get_db),
+):
+    """Returns the current user profile based on Firebase token."""
+    if not credentials:
+        raise HTTPException(status_code=401, detail="No token")
+    try:
+        decoded = firebase_auth.verify_id_token(credentials.credentials)
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    result = await db.execute(select(User).where(User.firebase_uid == decoded["uid"]))
+    user = result.scalars().first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return {"id": user.id, "email": user.email, "is_admin": user.is_admin}

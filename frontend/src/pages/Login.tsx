@@ -1,136 +1,112 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { API_URL } from '../api/client';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
-import { Lock, Store } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/lib/AuthContext';
+import { toast } from 'sonner';
 
 export default function Login() {
+  const { login, register } = useAuth();
+  const navigate = useNavigate();
+
+  const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isRegistering, setIsRegistering] = useState(false);
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
     setLoading(true);
-    const endpoint = isRegistering ? '/auth/register' : '/auth/login';
-
     try {
-      let res;
-      if (isRegistering) {
-        res = await fetch(`${API_URL}${endpoint}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password }),
-        });
+      if (mode === 'login') {
+        await login(email, password);
+        toast.success('Logged in successfully!');
       } else {
-        const formData = new URLSearchParams();
-        formData.append('username', email);
-        formData.append('password', password);
-        res = await fetch(`${API_URL}${endpoint}`, { method: 'POST', body: formData });
+        await register(email, password);
+        toast.success('Account created successfully!');
       }
-
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
-
-      if (!isRegistering) {
-        localStorage.setItem('token', data.access_token);
-        navigate('/');
-      } else {
-        setIsRegistering(false);
-        setError('Account created! Please sign in.');
-      }
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Authentication failed.');
+      navigate('/');
+    } catch (err: any) {
+      const msg = err.code === 'auth/invalid-credential' ? 'Invalid email or password.'
+        : err.code === 'auth/email-already-in-use' ? 'Email already registered.'
+        : err.code === 'auth/weak-password' ? 'Password must be at least 6 characters.'
+        : err.message;
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center">
-      <div className="w-full max-w-md space-y-6 px-4">
-        {/* Brand */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 mb-2">
-            <Lock className="w-5 h-5 text-primary" />
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            {isRegistering ? 'Create an account' : 'Welcome back'}
-          </h1>
-          <p className="text-muted-foreground text-sm">
-            {isRegistering
-              ? 'Sign up to start shopping with us.'
-              : 'Sign in to your account to continue.'}
-          </p>
-        </div>
-
-        <Card className="border border-border shadow-sm">
-          <CardContent className="pt-6">
-            {error && (
-              <div className={`mb-4 text-sm rounded-lg px-4 py-3 ${
-                error.includes('created') 
-                  ? 'bg-primary/10 border border-primary/30 text-primary' 
-                  : 'bg-destructive/10 border border-destructive/30 text-destructive'
-              }`}>
-                {error}
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  required
-                  autoComplete="email"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  required
-                  autoComplete={isRegistering ? 'new-password' : 'current-password'}
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Please wait...' : isRegistering ? 'Create Account' : 'Sign In'}
-              </Button>
-            </form>
-          </CardContent>
-          <CardFooter className="pb-6 pt-0">
-            <div className="w-full text-center text-sm text-muted-foreground">
-              {isRegistering ? 'Already have an account? ' : "Don't have an account? "}
-              <button
-                type="button"
-                onClick={() => { setIsRegistering(!isRegistering); setError(''); }}
-                className="text-primary font-medium hover:underline underline-offset-2"
-              >
-                {isRegistering ? 'Sign in' : 'Register'}
-              </button>
+    <div className="min-h-[70vh] flex items-center justify-center">
+      <div className="w-full max-w-md">
+        {/* Card */}
+        <div className="bg-card border border-border rounded-2xl shadow-xl overflow-hidden">
+          {/* Header */}
+          <div className="bg-gradient-to-br from-primary/20 via-primary/5 to-transparent px-8 pt-8 pb-6 text-center">
+            <div className="w-14 h-14 bg-primary/10 border border-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-4 text-2xl">
+              🛍️
             </div>
-          </CardFooter>
-        </Card>
+            <h1 className="text-2xl font-bold tracking-tight">Welcome to eshop</h1>
+            <p className="text-muted-foreground text-sm mt-1">
+              {mode === 'login' ? 'Sign in to continue shopping' : 'Create your account'}
+            </p>
+          </div>
 
-        <div className="text-center">
-          <Button asChild variant={"ghost" as const} size={"sm" as const} className="text-muted-foreground">
-            <Link to="/"><Store className="w-3.5 h-3.5 mr-1" />Back to store</Link>
-          </Button>
+          {/* Tab Toggle */}
+          <div className="flex border-b border-border">
+            {(['login', 'register'] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => setMode(m)}
+                className={`flex-1 py-3 text-sm font-medium transition-colors capitalize ${
+                  mode === m
+                    ? 'text-primary border-b-2 border-primary bg-primary/5'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                }`}
+              >
+                {m === 'login' ? 'Sign In' : 'Register'}
+              </button>
+            ))}
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="px-8 py-6 space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="email" className="text-sm font-medium">Email</label>
+              <input
+                id="email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="w-full h-10 px-3 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-shadow"
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="password" className="text-sm font-medium">Password</label>
+              <input
+                id="password"
+                type="password"
+                required
+                minLength={6}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full h-10 px-3 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-shadow"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full h-10 rounded-lg bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed mt-2"
+            >
+              {loading ? 'Please wait...' : mode === 'login' ? 'Sign In' : 'Create Account'}
+            </button>
+          </form>
+
+          <div className="pb-6 text-center text-xs text-muted-foreground">
+            Secured by <span className="text-primary font-medium">Firebase Authentication</span>
+          </div>
         </div>
       </div>
     </div>
