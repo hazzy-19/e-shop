@@ -11,12 +11,16 @@ from app.database import engine, Base
 from app.auth import models as auth_models
 from app.products import models as product_models
 from app.orders import models as order_models
+from app.payments import models as payment_models
+from app.reviews import models as review_models  # registers Review + Like tables
 
 # Routers
 from app.auth.router import router as auth_router
 from app.categories.router import router as categories_router
 from app.products.router import router as products_router
 from app.orders.router import router as orders_router
+from app.payments.router import router as payments_router
+from app.reviews.router import router as reviews_router
 
 from app.bot.main import start_bot, stop_bot
 from app.core.firebase import initialize_firebase
@@ -27,6 +31,10 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     await start_bot()
+    # Start review email scheduler
+    import asyncio
+    from app.reviews.scheduler import run_scheduler
+    asyncio.create_task(run_scheduler())
     yield
     await stop_bot()
 
@@ -44,6 +52,8 @@ app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 app.include_router(categories_router, prefix="/api/categories", tags=["categories"])
 app.include_router(products_router, prefix="/api/products", tags=["products"])
 app.include_router(orders_router, prefix="/api/orders", tags=["orders"])
+app.include_router(payments_router, prefix="/api/payments", tags=["payments"])
+app.include_router(reviews_router, prefix="/api/reviews", tags=["reviews"])
 
 # Serve locally uploaded product images (from bot photo uploads)
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "..", "static", "images")

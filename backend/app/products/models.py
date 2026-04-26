@@ -16,3 +16,5 @@ class Product(Base):
     
     order_items = relationship("OrderItem", back_populates="product")
     category = relationship("Category", back_populates="products")
+    reviews = relationship("Review", back_populates="product", cascade="all, delete-orphan")
+    likes = relationship("Like", back_populates="product", cascade="all, delete-orphan")

@@ -7,3 +7,9 @@ export const fetchProducts = async () => {
 };
 
 // ... other endpoints ...
+
+export const getImageUrl = (url?: string | null) => {
+    if (!url) return '';
+    if (url.startsWith('http')) return url;
+    return `${API_URL.replace('/api', '')}${url.startsWith('/') ? '' : '/'}${url}`;
+};

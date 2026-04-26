@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { UploadCloud, FileType, CheckCircle2, AlertCircle } from 'lucide-react';
+import { UploadCloud, FileType, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { API_URL } from '@/api/client';
 import { toast } from 'sonner';
