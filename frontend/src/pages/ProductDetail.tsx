@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useCart } from '../store/CartContext';
-import { API_URL } from '../api/client';
+import { API_URL, getImageUrl } from '../api/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -80,7 +80,7 @@ export default function ProductDetail() {
         <div className="md:w-1/2">
           <div className="aspect-square rounded-2xl overflow-hidden bg-muted border border-border shadow-md">
             {product.image_url ? (
-              <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+              <img src={getImageUrl(product.image_url)} alt={product.name} className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-muted-foreground">
                 <Package className="w-16 h-16 opacity-20" />

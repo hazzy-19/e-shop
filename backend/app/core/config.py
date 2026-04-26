@@ -21,6 +21,19 @@ class Settings(BaseSettings):
     MPESA_BUSINESS_SHORTCODE: Optional[str] = None
     MPESA_ENVIRONMENT: str = "sandbox"
 
+    # Payhero Payment Gateway
+    PAYHERO_API_USERNAME: Optional[str] = None
+    PAYHERO_API_PASSWORD: Optional[str] = None
+    PAYHERO_CHANNEL_ID: Optional[str] = None
+    PAYHERO_CALLBACK_URL: str = "http://localhost:8000/api/payments/callback"
+
+    # Termii Email (review prompts) — paste key when ready
+    TERMII_API_KEY: Optional[str] = None
+    TERMII_EMAIL_CONFIG_ID: Optional[str] = None
+
+    # Frontend URL (used in email links)
+    FRONTEND_URL: str = "http://localhost:5173"
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
